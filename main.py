@@ -36,6 +36,7 @@ async def start_app():
         SECRET_KEY = secret_key()
     db.bind(provider='sqlite', filename=my_db, create_db=create_db)
     db.generate_mapping(create_tables=create_db)
+    print('======================================================================== LOL')
     if os.environ.get("ADMIN_LOGIN") is None:
         print('первый if')
         if create_db is True:
