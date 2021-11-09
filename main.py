@@ -37,10 +37,13 @@ async def start_app():
     db.bind(provider='sqlite', filename=my_db, create_db=create_db)
     db.generate_mapping(create_tables=create_db)
     if os.environ.get("ADMIN_LOGIN") is None:
+        print('первый if')
         if create_db is True:
-            admin = administrator()
-            if not User.exists(name=admin['name']):
-                User(**admin)
+            ADMINISTRATOR = administrator()
+            print(ADMINISTRATOR)
+            if not User.exists(name=ADMINISTRATOR['name']):
+                User(**ADMINISTRATOR)
+                print('последний if')
                 commit()
 
 
