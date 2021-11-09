@@ -34,6 +34,7 @@ async def start_app():
         create_db = False
     if os.environ.get("SECRET_KEY") is None:
         SECRET_KEY = secret_key()
+        print('======================================================================== KEK')
     db.bind(provider='sqlite', filename=my_db, create_db=create_db)
     db.generate_mapping(create_tables=create_db)
     print('======================================================================== LOL')
