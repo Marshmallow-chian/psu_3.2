@@ -109,7 +109,7 @@ async def read_own_items(current_user: User = Security(get_current_active_user, 
 
 # -----------------------------------------------------------------------------------------
 
-
+'''
 @app.post("/token", response_model=Token, tags=['token'])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     with db_session:
@@ -123,7 +123,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)  # 30 min
         access_token = create_access_token(data={"sub": user.name, "scopes": form_data.scopes},
                                            expires_delta=access_token_expires)
-        return {"access_token": access_token, "token_type": "bearer"}
+        return {"access_token": access_token, "token_type": "bearer"} '''
 
 
 # -----------------------------------------------------------------------------------------
