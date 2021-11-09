@@ -19,7 +19,6 @@ from config import secret_key, administrator
 app = FastAPI()
 my_db = 'Manufacturer_and_Products.sqlite'
 
-
 SECRET_KEY = None
 
 
@@ -37,11 +36,12 @@ async def start_app():
         SECRET_KEY = secret_key()
     db.bind(provider='sqlite', filename=my_db, create_db=create_db)
     db.generate_mapping(create_tables=create_db)
-    if create_db is True:
-        admin = administrator()
-        if not User.exists(name=admin['name']):
-            User(**admin)
-            commit()
+    if os.environ.get("ADMIN_LOGIN") is None:
+        if create_db is True:
+            admin = administrator()
+            if not User.exists(name=admin['name']):
+                User(**admin)
+                commit()
 
 
 # ----------------------------------------------------------------------------------------------------
