@@ -38,11 +38,10 @@ async def start_app():
     db.bind(provider='sqlite', filename=my_db, create_db=create_db)
     db.generate_mapping(create_tables=create_db)
     if create_db is True:
-        if os.environ.get("ADMIN_LOGIN") is None:
-            admin = administrator()
-            if not User.exists(name=admin['name']):
-                User(**admin)
-                commit()
+        admin = administrator()
+        if not User.exists(name=admin['name']):
+            User(**admin)
+            commit()
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -140,7 +139,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 
 @app.get('/api/products', tags=['products'])
-async def get_all_products(current_user: User = Security(get_current_active_user, scopes=["user"])):
+async def get_all_products():
     with db_session:
         products = Products.select()  # преобразуем запрос в SQL, а затем отправим в базу данных
         all_products = []
@@ -150,8 +149,7 @@ async def get_all_products(current_user: User = Security(get_current_active_user
 
 
 @app.get('/api/product/get_average_products', tags=['products'])
-async def get_average(minimum: int, maximum: int,
-                      current_user: User = Security(get_current_active_user, scopes=["user"])):
+async def get_average(minimum: int, maximum: int):
     with db_session:
         products = Products.select(lambda p: (minimum <= p.price) and (p.price <= maximum))[::]  # работает
         all_products = []
@@ -161,7 +159,7 @@ async def get_average(minimum: int, maximum: int,
 
 
 @app.get('/api/product/{item_id}', tags=['products'])
-async def get_product(item_id: int, current_user: User = Security(get_current_active_user, scopes=["user"])):
+async def get_product(item_id: int):
     with db_session:
         if Products.exists(id=item_id):
             product = Products.get(id=item_id)
@@ -230,7 +228,7 @@ async def delete_product(item_id: int, current_user: User = Security(get_current
 
 
 @app.get('/api/producer/get_cool_producers', tags=['producers'])
-async def get_cool(cool_level: int, current_user: User = Security(get_current_active_user, scopes=["user"])):
+async def get_cool(cool_level: int):
     with db_session:
         producer = Producer.select(lambda p: len(p.products) >= cool_level)[::]  # работает
         all_producer = []
@@ -240,7 +238,7 @@ async def get_cool(cool_level: int, current_user: User = Security(get_current_ac
 
 
 @app.get('/api/producers', tags=['producers'])
-async def get_all_producers(current_user: User = Security(get_current_active_user, scopes=["user"])):
+async def get_all_producers():
     with db_session:
         producer = Producer.select()[:]  # преобразуем запрос в SQL, а затем отправим в базу данных
         all_producer = []
@@ -250,7 +248,7 @@ async def get_all_producers(current_user: User = Security(get_current_active_use
 
 
 @app.get('/api/producer/{item_id}', tags=['producers'])
-async def get_producer(item_id: int, current_user: User = Security(get_current_active_user, scopes=["user"])):
+async def get_producer(item_id: int):
     with db_session:
         if Producer.exists(id=item_id):
             producer = Producer.get(id=item_id)
