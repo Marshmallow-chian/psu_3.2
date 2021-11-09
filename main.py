@@ -6,18 +6,25 @@ from scheme import (ProductsOut, ProducerOut, NewProducts, EditProducts, NewProd
 from models import db, Producer, User, Products
 from security.s_main import (get_password_hash, get_current_active_user, get_current_active_admin,
                              ACCESS_TOKEN_EXPIRE_MINUTES, authenticate_user, create_access_token)
-from security.s_scheme import Token, TokenData
+from security.s_scheme import Token
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi import FastAPI, Body, Depends, status, HTTPException, Security
+from fastapi import FastAPI, Body, Security, Depends, status, HTTPException
 from config import administrator
-from config_s_key import s_key
+from dotenv import load_dotenv
+from pathlib import Path
+import os
+#from config_s_key import s_key
 
 # использовать exception
 # TODO: add hashed_password -> password
 
 app = FastAPI()
 my_db = 'Manufacturer_and_Products.sqlite'
+load_dotenv()
+env_path = Path('.')/'.env'
+load_dotenv(dotenv_path=env_path)
+
 SECRET_KEY = None
 
 
@@ -32,7 +39,7 @@ async def start_app():
     if os.path.isfile(my_db):
         create_db = False
     if os.environ.get("SECRET_KEY") is None:
-        SECRET_KEY = s_key()
+        SECRET_KEY = os.getenv("SECRET_KEY")
     db.bind(provider='sqlite', filename=my_db, create_db=create_db)
     db.generate_mapping(create_tables=create_db)
     if create_db is True:

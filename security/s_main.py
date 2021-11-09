@@ -1,15 +1,15 @@
 from datetime import datetime, timedelta
 from typing import Optional, Union, Literal
-import uvicorn
 from fastapi import Depends, HTTPException, status, Security
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, SecurityScopes
+from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from security.s_scheme import Token, TokenData
-from scheme import UserInDB, UserOut
+from security.s_scheme import TokenData
+from scheme import UserInDB
 from models import User
 from pydantic import ValidationError
-from main import SECRET_KEY
+
+#  from main import SECRET_KEY
 
 # TODO: add .env
 
@@ -50,6 +50,7 @@ def authenticate_user(user_name: str, password: str) -> Union[UserInDB, Literal[
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):  # ставит метку
+    from main import SECRET_KEY
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -61,6 +62,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None): 
 
 
 async def get_current_user(security_scopes: SecurityScopes, token: str = Depends(oauth2_scheme)):
+    from main import SECRET_KEY
     # где-то в ф должна быть проверка на админа
     if security_scopes.scopes:
         authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
