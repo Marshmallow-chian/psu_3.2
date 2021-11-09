@@ -1,14 +1,15 @@
 import os.path
 import uvicorn
 from pony.orm import db_session, commit
-from scheme import ProductsOut, ProducerOut, NewProducts, EditProducts, NewProducer, EditProducer, CoolLvL
-from scheme import UserInDB, UserOut, UserEnter, AdminEnter
+from scheme import (ProductsOut, ProducerOut, NewProducts, EditProducts, NewProducer, EditProducer, CoolLvL,
+                    UserOut, UserEnter, AdminEnter)
 from models import db, Producer, User, Products
-from security.s_main import *
-from security.s_scheme import *
+from security.s_main import (get_password_hash, get_current_active_user, get_current_active_admin,
+                             ACCESS_TOKEN_EXPIRE_MINUTES, authenticate_user, create_access_token)
+from security.s_scheme import Token, TokenData
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi import FastAPI, Body, Depends, status, HTTPException
+from fastapi import FastAPI, Body, Depends, status, HTTPException, Security
 from config import administrator
 from config_s_key import s_key
 
@@ -57,7 +58,6 @@ async def get_all_administrator():
 @app.post('/api/administrator/new', tags=['administrator'])
 async def new_admin(admin: AdminEnter = Body(...), current_user: User = Security(get_current_active_admin,
                                                                                  scopes=["admin"])):
-
     with db_session:
         n_admin = admin.dict()
 
@@ -71,6 +71,7 @@ async def new_admin(admin: AdminEnter = Body(...), current_user: User = Security
         User(**n_admin)
         commit()
         return UserOut.from_orm(admin)
+
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -118,7 +119,7 @@ async def read_own_items(current_user: User = Security(get_current_active_user, 
 @app.post("/token", response_model=Token, tags=['token'])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     with db_session:
-        user = authenticate_user(form_data.username, form_data.password)  # UserInDB or False
+        user = authenticate_user(form_data.username, form_data.password)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -145,7 +146,8 @@ async def get_all_products(current_user: User = Security(get_current_active_user
 
 
 @app.get('/api/product/get_average_products', tags=['products'])
-async def get_average(minimum: int, maximum: int, current_user: User = Security(get_current_active_user, scopes=["user"])):
+async def get_average(minimum: int, maximum: int,
+                      current_user: User = Security(get_current_active_user, scopes=["user"])):
     with db_session:
         products = Products.select(lambda p: (minimum <= p.price) and (p.price <= maximum))[::]  # работает
         all_products = []
@@ -165,7 +167,8 @@ async def get_product(item_id: int, current_user: User = Security(get_current_ac
 
 
 @app.put('/api/product/buy/{item_id}', tags=['products.buy'])
-async def product_buy(item_id: int, count: int, current_user: User = Security(get_current_active_user, scopes=["user"])):
+async def product_buy(item_id: int, count: int,
+                      current_user: User = Security(get_current_active_user, scopes=["user"])):
     with db_session:
         if Products.exists(id=item_id):
             product = Products.get(id=item_id)
@@ -174,7 +177,6 @@ async def product_buy(item_id: int, count: int, current_user: User = Security(ge
             commit()
             return ProductsOut.from_orm(Products[item_id])
         return 'товара с таким id не существует'
-
 
 
 @app.post('/api/product/new', tags=['products'])
