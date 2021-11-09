@@ -1,29 +1,24 @@
 import os.path
 import uvicorn
 from pony.orm import db_session, commit
-from scheme import (ProductsOut, ProducerOut, NewProducts, EditProducts, NewProducer, EditProducer, CoolLvL,
-                    UserOut, UserEnter, AdminEnter)
 from models import db, Producer, User, Products
 from security.s_main import (get_password_hash, get_current_active_user, get_current_active_admin,
                              ACCESS_TOKEN_EXPIRE_MINUTES, authenticate_user, create_access_token)
+from scheme import (ProductsOut, ProducerOut, NewProducts, EditProducts, NewProducer, EditProducer, CoolLvL,
+                    UserOut, UserEnter, AdminEnter)
 from security.s_scheme import Token
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import FastAPI, Body, Security, Depends, status, HTTPException
-from config import administrator
-from dotenv import load_dotenv
-from pathlib import Path
 import os
-#from config_s_key import s_key
+from config import secret_key, administrator
 
 # использовать exception
 # TODO: add hashed_password -> password
 
 app = FastAPI()
 my_db = 'Manufacturer_and_Products.sqlite'
-load_dotenv()
-env_path = Path('.')/'.env'
-load_dotenv(dotenv_path=env_path)
+
 
 SECRET_KEY = None
 
@@ -39,13 +34,15 @@ async def start_app():
     if os.path.isfile(my_db):
         create_db = False
     if os.environ.get("SECRET_KEY") is None:
-        SECRET_KEY = os.getenv("SECRET_KEY")
+        SECRET_KEY = secret_key()
     db.bind(provider='sqlite', filename=my_db, create_db=create_db)
     db.generate_mapping(create_tables=create_db)
     if create_db is True:
-        if not User.exists(name=administrator['name']):
-            User(**administrator)
-            commit()
+        if os.environ.get("ADMIN_LOGIN") is None:
+            admin = administrator()
+            if not User.exists(name=admin['name']):
+                User(**admin)
+                commit()
 
 
 # ----------------------------------------------------------------------------------------------------
