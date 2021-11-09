@@ -33,16 +33,13 @@ async def start_app():
     if os.path.isfile(my_db):
         create_db = False
     SECRET_KEY = secret_key()
-    print('======================================================================== KEK', SECRET_KEY)
     db.bind(provider='sqlite', filename=my_db, create_db=create_db)
     db.generate_mapping(create_tables=create_db)
-    if create_db is True:
-        ADMINISTRATOR = administrator()
-        print(ADMINISTRATOR)
-        if not User.exists(name=ADMINISTRATOR['name']):
-            User(**ADMINISTRATOR)
-            print('======================================================================== LOL')
-            commit()
+    ADMINISTRATOR = administrator()
+    if not User.exists(name=ADMINISTRATOR['name']):
+        User(**ADMINISTRATOR)
+        print('======================================================================== LOL')
+        commit()
 
 
 # ----------------------------------------------------------------------------------------------------
