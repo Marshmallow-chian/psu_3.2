@@ -35,13 +35,15 @@ async def start_app():
     SECRET_KEY = secret_key()
     db.bind(provider='sqlite', filename=my_db, create_db=create_db)
     db.generate_mapping(create_tables=create_db)
-    ADMINISTRATOR = administrator()
-    print('=========================================================', ADMINISTRATOR['name'], User.exists(name=ADMINISTRATOR['name']))
-    #if not User.exists(name=ADMINISTRATOR['name']):
-    #    print('==========================================================================lol')
-        #User(**ADMINISTRATOR)
-        #print('======================================================================== LOL')
-        #commit()
+    try:
+        ADMINISTRATOR = administrator()
+        User(**ADMINISTRATOR)
+        print('======================================================================== LOL')
+        commit()
+    except BaseException:
+        print('================================================================= Ошибка')
+    finally:
+        print(">>>>>>>>>>>>>>>>> Конец программы <<<<<<<<<<<<<<<<<<<<")
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -83,7 +85,8 @@ async def new_admin(admin: AdminEnter = Body(...), current_user: User = Security
 async def new_user(user: UserEnter = Body(...)):  # любой
     with db_session:
         n_user = user.dict()
-
+        print(User.exists(name=user.name))
+        print(user)
         if User.exists(name=user.name):
             return 'пользователь с таким именем уже существует'
 
