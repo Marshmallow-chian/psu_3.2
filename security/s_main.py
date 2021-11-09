@@ -9,17 +9,10 @@ from security.s_scheme import Token, TokenData
 from scheme import UserInDB, UserOut
 from models import User
 from pydantic import ValidationError
-from dotenv import load_dotenv
-from pathlib import Path
-import os
+from main import SECRET_KEY
 
 # TODO: add .env
 
-load_dotenv()
-env_path = Path('.')/'.env'
-load_dotenv(dotenv_path=env_path)
-
-SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

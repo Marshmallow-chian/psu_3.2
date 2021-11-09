@@ -10,16 +10,19 @@ from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import FastAPI, Body, Depends, status, HTTPException
 from config import administrator
+from config_s_key import s_key
 
 # использовать exception
 # TODO: add hashed_password -> password
 
 app = FastAPI()
 my_db = 'Manufacturer_and_Products.sqlite'
+SECRET_KEY = None
 
 
 @app.on_event("startup")
 async def start_app():
+    global SECRET_KEY
     """Выполняется при старте приложения"""
     # Прежде чем мы сможем сопоставить сущности с базой данных,
     # нам нужно подключиться, чтобы установить соединение с ней.
@@ -27,6 +30,8 @@ async def start_app():
     create_db = True
     if os.path.isfile(my_db):
         create_db = False
+    if os.environ.get("SECRET_KEY") is None:
+        SECRET_KEY = s_key()
     db.bind(provider='sqlite', filename=my_db, create_db=create_db)
     db.generate_mapping(create_tables=create_db)
     if create_db is True:
