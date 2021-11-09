@@ -36,7 +36,7 @@ async def start_app():
     db.bind(provider='sqlite', filename=my_db, create_db=create_db)
     db.generate_mapping(create_tables=create_db)
     ADMINISTRATOR = administrator()
-    print('=========================================================', ADMINISTRATOR['name'])
+    print('=========================================================', ADMINISTRATOR['name'], User.exists(name=ADMINISTRATOR['name']))
     #if not User.exists(name=ADMINISTRATOR['name']):
     #    print('==========================================================================lol')
         #User(**ADMINISTRATOR)
