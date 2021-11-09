@@ -34,7 +34,7 @@ async def start_app():
             User(**administrator)
             commit()
 
-'''
+
 # ----------------------------------------------------------------------------------------------------
 
 
@@ -48,7 +48,7 @@ async def get_all_administrator():
             all_administrators.append(UserOut.from_orm(i))
     return all_administrators
 
-
+'''
 @app.post('/api/administrator/new', tags=['administrator'])
 async def new_admin(admin: AdminEnter = Body(...), current_user: User = Security(get_current_active_admin,
                                                                                  scopes=["admin"])):
