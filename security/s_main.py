@@ -1,0 +1,118 @@
+from datetime import datetime, timedelta
+from typing import Optional, Union, Literal
+import uvicorn
+from fastapi import Depends, HTTPException, status, Security
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, SecurityScopes
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from security.s_scheme import Token, TokenData
+from scheme import UserInDB, UserOut
+from models import User
+from pydantic import ValidationError
+from dotenv import load_dotenv
+from pathlib import Path
+import os
+
+# TODO: add .env
+
+load_dotenv()
+env_path = Path('.')/'.env'
+load_dotenv(dotenv_path=env_path)
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+# SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", scopes={"admin": "Read information about the current user.",
+                                                               "user": "Read items."})
+
+
+def verify_password(plain_password, hashed_password):  # проверяет правильность пароля, True/False
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password):  # хэширует пароль
+    return pwd_context.hash(password)
+
+
+def get_user(user_name: str) -> Union[UserInDB, str]:  # ------------
+    if User.exists(name=user_name):  # если юзер есть в бд, то выводим его
+        user = User.get(name=user_name)
+        return UserInDB.from_orm(user)
+    else:
+        return 'пользователя с таким именем не существует'
+
+
+def authenticate_user(user_name: str, password: str) -> Union[UserInDB, Literal[False]]:  # --------------
+    user = get_user(user_name)
+    if isinstance(user, str):
+        return False
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):  # ставит метку
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+async def get_current_user(security_scopes: SecurityScopes, token: str = Depends(oauth2_scheme)):
+    # где-то в ф должна быть проверка на админа
+    if security_scopes.scopes:
+        authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
+    else:
+        authenticate_value = f"Bearer"
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": authenticate_value})
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])  # tokenUrl and scopes + s_k + alg
+        username: str = payload.get("sub")  # ?
+        if username is None:
+            raise credentials_exception
+        token_scopes = payload.get("scopes", [])  # то, что отметили галочкой
+        token_data = TokenData(name=username, scopes=token_scopes)  # !
+    except (JWTError, ValidationError):
+        raise credentials_exception
+    user = get_user(token_data.name)
+    if user is None:
+        raise credentials_exception
+    for scope in security_scopes.scopes:
+        if scope not in token_data.scopes:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not enough permissions",
+                headers={"WWW-Authenticate": authenticate_value},
+            )
+    return user
+
+
+async def get_current_active_admin(current_user: User = Security(get_current_user, scopes=["admin"])):  # UserInDB
+    if current_user.admin_rights is True:
+        if current_user.disabled:
+            raise HTTPException(status_code=400, detail="Inactive admin")
+        return current_user
+    else:
+        return f'authorization error: no administrator rights'
+
+
+async def get_current_active_user(current_user: User = Security(get_current_user, scopes=["user"])):  # UserInDB
+    if current_user.admin_rights is False:
+        if current_user.disabled:
+            raise HTTPException(status_code=400, detail="Inactive user")
+        return current_user
+    else:
+        return f'authorization error: no user rights'
