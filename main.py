@@ -30,8 +30,8 @@ async def start_app():
     # нам нужно подключиться, чтобы установить соединение с ней.
     # Это можно сделать с помощью метода bind()
     create_db = True
-    if os.path.isfile(my_db):
-        create_db = False
+    #if os.path.isfile(my_db):
+    #    create_db = False
     SECRET_KEY = secret_key()
     db.bind(provider='sqlite', filename=my_db, create_db=create_db)
     db.generate_mapping(create_tables=create_db)
