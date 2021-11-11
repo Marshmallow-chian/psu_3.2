@@ -8,6 +8,7 @@ from security.s_scheme import TokenData
 from scheme import UserInDB
 from models import User
 from pydantic import ValidationError
+from pony.orm import db_session
 
 #  from main import SECRET_KEY
 
@@ -31,11 +32,12 @@ def get_password_hash(password):  # хэширует пароль
 
 
 def get_user(user_name: str) -> Union[UserInDB, str]:  # ------------
-    if User.exists(name=user_name):  # если юзер есть в бд, то выводим его
-        user = User.get(name=user_name)
-        return UserInDB.from_orm(user)
-    else:
-        return 'пользователя с таким именем не существует'
+    with db_session:
+        if User.exists(name=user_name):  # если юзер есть в бд, то выводим его
+            user = User.get(name=user_name)
+            return UserInDB.from_orm(user)
+        else:
+            return 'пользователя с таким именем не существует'
 
 
 def authenticate_user(user_name: str, password: str) -> Union[UserInDB, Literal[False]]:  # --------------
