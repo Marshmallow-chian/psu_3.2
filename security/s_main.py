@@ -88,11 +88,18 @@ async def get_current_user(security_scopes: SecurityScopes, token: str = Depends
         raise credentials_exception
     for scope in security_scopes.scopes:
         if scope not in token_data.scopes:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not enough permissions",
-                headers={"WWW-Authenticate": authenticate_value},
-            )
+            if user.admin_rights is True:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Отсутсвуют права пользователя",
+                    headers={"WWW-Authenticate": authenticate_value},
+                )
+            elif user.admin_rights is False:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Отсутствуют права администратора",
+                    headers={"WWW-Authenticate": authenticate_value},
+                )
     return user
 
 
