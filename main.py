@@ -207,8 +207,7 @@ async def edit_product(item_id: int, edit_pr: EditProducts = Body(...),
             product = edit_pr.dict(exclude_unset=True, exclude_none=True)
             Products[item_id].set(**product)
             if not Producer.exists(id=edit_pr.producer):
-                if edit_pr.producer != None:
-                    return 'Производителя с таким id не существует'
+                return 'Производителя с таким id не существует'
             commit()
             return ProductsOut.from_orm(Products[item_id])
         return 'товара с таким id не существует'

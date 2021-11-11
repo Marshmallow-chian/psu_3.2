@@ -104,18 +104,12 @@ async def get_current_user(security_scopes: SecurityScopes, token: str = Depends
 
 
 async def get_current_active_admin(current_user: User = Security(get_current_user, scopes=["admin"])):  # UserInDB
-    if current_user.admin_rights is True:
-        if current_user.disabled:
-            raise HTTPException(status_code=400, detail="Inactive admin")
-        return current_user
-    else:
-        return f'authorization error: no administrator rights'
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive admin")
+    return current_user
 
 
 async def get_current_active_user(current_user: User = Security(get_current_user, scopes=["user"])):  # UserInDB
-    if current_user.admin_rights is False:
-        if current_user.disabled:
-            raise HTTPException(status_code=400, detail="Inactive user")
-        return current_user
-    else:
-        return f'authorization error: no user rights'
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
