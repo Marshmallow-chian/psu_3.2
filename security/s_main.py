@@ -40,13 +40,21 @@ def get_user(user_name: str) -> Union[UserInDB, str]:  # ------------
             return 'пользователя с таким именем не существует'
 
 
-def authenticate_user(user_name: str, password: str) -> Union[UserInDB, Literal[False]]:  # --------------
+def authenticate_user(user_name: str, password: str, scope: list) -> Union[UserInDB, Literal[False]]:  # --------------
     user = get_user(user_name)
+    print(user)
+    print(scope)
     if isinstance(user, str):
         return False
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
+        return False
+    if len(scope) > 1:
+        return False
+    if user.admin_rights is True and scope[0] == 'user':
+        return False
+    if user.admin_rights is False and scope[0] == 'admin':
         return False
     return user
 
@@ -88,28 +96,25 @@ async def get_current_user(security_scopes: SecurityScopes, token: str = Depends
         raise credentials_exception
     for scope in security_scopes.scopes:
         if scope not in token_data.scopes:
-            if user.admin_rights is True:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Отсутсвуют права пользователя",
-                    headers={"WWW-Authenticate": authenticate_value},
-                )
-            elif user.admin_rights is False:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Отсутствуют права администратора",
-                    headers={"WWW-Authenticate": authenticate_value},
-                )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                                detail="Недостаточно прав",
+                                headers={"WWW-Authenticate": authenticate_value})
     return user
 
 
 async def get_current_active_admin(current_user: User = Security(get_current_user, scopes=["admin"])):  # UserInDB
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive admin")
-    return current_user
+    if current_user.admin_rights is True:
+        if current_user.disabled:
+            raise HTTPException(status_code=400, detail="Inactive admin")
+        return current_user
+    else:
+        return f'authorization error: no administrator rights'
 
 
 async def get_current_active_user(current_user: User = Security(get_current_user, scopes=["user"])):  # UserInDB
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
+    if current_user.admin_rights is False:
+        if current_user.disabled:
+            raise HTTPException(status_code=400, detail="Inactive user")
+        return current_user
+    else:
+        return f'authorization error: no user rights'

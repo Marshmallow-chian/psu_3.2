@@ -122,7 +122,7 @@ async def read_own_items(current_user: User = Security(get_current_active_user, 
 @app.post("/token", response_model=Token, tags=['token'])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     with db_session:
-        user = authenticate_user(form_data.username, form_data.password)
+        user = authenticate_user(form_data.username, form_data.password, form_data.scopes)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -169,8 +169,7 @@ async def get_product(item_id: int):
 
 
 @app.put('/api/product/buy/{item_id}', tags=['products.buy'])
-async def product_buy(item_id: int, count: int,
-                      current_user: User = Security(get_current_active_user, scopes=["user"])):
+async def product_buy(item_id: int, count: int, current_user: User = Security(get_current_active_user, scopes=["user"])):
     with db_session:
         if Products.exists(id=item_id):
             product = Products.get(id=item_id)
