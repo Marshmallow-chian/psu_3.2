@@ -3,7 +3,7 @@ import uvicorn
 from pony.orm import db_session, commit
 from models import db, Producer, User, Products
 from security.s_main import (get_password_hash, get_current_active_user, get_current_active_admin,
-                             ACCESS_TOKEN_EXPIRE_MINUTES, authenticate_user, create_access_token)
+                             ACCESS_TOKEN_EXPIRE_MINUTES, authenticate_user, create_access_token, get_current_active)
 from scheme import (ProductsOut, ProducerOut, NewProducts, EditProducts, NewProducer, EditProducer, CoolLvL,
                     UserOut, UserEnter, AdminEnter)
 from security.s_scheme import Token
@@ -45,7 +45,6 @@ async def start_app():
 
 # ----------------------------------------------------------------------------------------------------
 
-
 @app.get('/api/administrator', tags=['administrator'])
 async def get_all_administrator():
     with db_session:
@@ -62,7 +61,6 @@ async def new_admin(admin: AdminEnter = Body(...), current_user: User = Security
                                                                                  scopes=["admin"])):
     with db_session:
         n_admin = admin.dict()
-
         if User.exists(name=admin.name):
             return 'администратор с таким именем уже существует'
 
@@ -97,7 +95,7 @@ async def new_user(user: UserEnter = Body(...)):  # любой
 
 
 @app.get('/api/user', tags=['user'])
-async def get_all_users():
+async def get_all_users():  # любой
     with db_session:
         users = User.select(admin_rights=False)  # преобразуем запрос в SQL, а затем отправим в базу данных
         all_users = []
@@ -107,13 +105,13 @@ async def get_all_users():
 
 
 @app.get("/users/me/", response_model=UserOut, tags=['user'])
-async def read_users_me(current_user: User = Security(get_current_active_user, scopes=["user"])):
+async def read_users_me(current_user: User = Depends(get_current_active)):
     return current_user
 
 
 @app.get("/users/me/items/", tags=['user'])
-async def read_own_items(current_user: User = Security(get_current_active_user, scopes=["user"])):
-    return [{"item_id": "Foo", "owner": current_user.name}]
+async def read_own_items(current_user: User = Depends(get_current_active)):
+    return [{"owner": current_user.name}]
 
 
 # -----------------------------------------------------------------------------------------
@@ -139,7 +137,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 
 @app.get('/api/products', tags=['products'])
-async def get_all_products():
+async def get_all_products():  # любой
     with db_session:
         products = Products.select()  # преобразуем запрос в SQL, а затем отправим в базу данных
         all_products = []
@@ -149,7 +147,7 @@ async def get_all_products():
 
 
 @app.get('/api/product/get_average_products', tags=['products'])
-async def get_average(minimum: int, maximum: int):
+async def get_average(minimum: int, maximum: int):  # любой
     with db_session:
         products = Products.select(lambda p: (minimum <= p.price) and (p.price <= maximum))[::]  # работает
         all_products = []
@@ -158,25 +156,33 @@ async def get_average(minimum: int, maximum: int):
         return all_products
 
 
-@app.get('/api/product/{item_id}', tags=['products'])
-async def get_product(item_id: int):
+@app.get('/api/product/{product_id}', tags=['products'])
+async def get_product(product_id: int):  # любой
     with db_session:
-        if Products.exists(id=item_id):
-            product = Products.get(id=item_id)
+        if product_id > 1999999999 or product_id < 0:
+            return 'ошибка id'
+        if Products.exists(id=product_id):
+            product = Products.get(id=product_id)
             return ProductsOut.from_orm(product)
         else:
             return 'товара с таким id не существует'
 
 
-@app.put('/api/product/buy/{item_id}', tags=['products.buy'])
-async def product_buy(item_id: int, count: int, current_user: User = Security(get_current_active_user, scopes=["user"])):
+@app.put('/api/product/buy/{product_id}', tags=['products.buy'])
+async def product_buy(product_id: int, count: int, current_user: User = Security(get_current_active_user, scopes=["user"])):
     with db_session:
-        if Products.exists(id=item_id):
-            product = Products.get(id=item_id)
+        if product_id > 1999999999 or product_id < 0:
+            return 'ошибка id'
+        if Products.exists(id=product_id):
+            product = Products.get(id=product_id)
+            if count <= 0:
+                return 'error: попытка купить отрицательное число товаров'
             product.quantity = product.quantity - count
+            if product.quantity < 0:
+                return 'такого количесвта товаров нет на складе'
             print(product.quantity)
             commit()
-            return ProductsOut.from_orm(Products[item_id])
+            return ProductsOut.from_orm(Products[product_id])
         return 'товара с таким id не существует'
 
 
@@ -185,6 +191,8 @@ async def new_product(n_product: NewProducts = Body(...), current_user: User = S
                                                                                         scopes=["admin"])):
     with db_session:
 
+        if n_product.id > 1999999999 or n_product.id < 0:
+            return 'ошибка id'
         product = n_product.dict()
 
         if Products.exists(id=int(n_product.id)):
@@ -198,25 +206,31 @@ async def new_product(n_product: NewProducts = Body(...), current_user: User = S
         return n_product
 
 
-@app.put('/api/product/edit/{item_id}', tags=['products'])
-async def edit_product(item_id: int, edit_pr: EditProducts = Body(...),
-                       current_user: User = Security(get_current_active_admin, scopes=["admin"])):
+@app.put('/api/product/edit/{product_id}', tags=['products'])
+async def edit_product(product_id: int, edit_pr: EditProducts = Body(...)):
+                      # current_user: User = Security(get_current_active_admin, scopes=["admin"])):
     with db_session:
-        if Products.exists(id=item_id):
+
+        if product_id > 1999999999 or product_id < 0:
+            return 'ошибка id'
+
+        if Products.exists(id=product_id):
             product = edit_pr.dict(exclude_unset=True, exclude_none=True)
-            Products[item_id].set(**product)
-            if not Producer.exists(id=edit_pr.producer):
+            if 'producer' in product and not Producer.exists(id=product['producer']):
                 return 'Производителя с таким id не существует'
+            Products[product_id].set(**product)
             commit()
-            return ProductsOut.from_orm(Products[item_id])
+            return ProductsOut.from_orm(Products[product_id])
         return 'товара с таким id не существует'
 
 
-@app.delete('/api/product/delete/{item_id}', tags=['products'])
-async def delete_product(item_id: int, current_user: User = Security(get_current_active_admin, scopes=["admin"])):
+@app.delete('/api/product/delete/{product_id}', tags=['products'])
+async def delete_product(product_id: int, current_user: User = Security(get_current_active_admin, scopes=["admin"])):
     with db_session:
-        if Products.exists(id=item_id):
-            Products[item_id].delete()
+        if product_id > 1999999999 or product_id < 0:
+            return 'ошибка id'
+        if Products.exists(id=product_id):
+            Products[product_id].delete()
             commit()
             return "Объект удалён"
         return "производителя с таким id не существует"
@@ -231,7 +245,11 @@ async def get_cool(cool_level: int):
         producer = Producer.select(lambda p: len(p.products) >= cool_level)[::]  # работает
         all_producer = []
         for i in producer:
-            all_producer.append(CoolLvL.from_orm(i))
+            quantity = len(i.products)
+            i = i.to_dict() | {'quantity': quantity}
+            print(i)
+            print(CoolLvL(**i))
+            all_producer.append(CoolLvL(**i))
         return all_producer
 
 
@@ -245,22 +263,24 @@ async def get_all_producers():
     return all_producer
 
 
-@app.get('/api/producer/{item_id}', tags=['producers'])
-async def get_producer(item_id: int):
+@app.get('/api/producer/{producer_id}', tags=['producers'])
+async def get_producer(producer_id: int):  # любой
     with db_session:
-        if Producer.exists(id=item_id):
-            producer = Producer.get(id=item_id)
+        if producer_id > 1999999999 or producer_id < 0:
+            return 'ошибка id'
+        if Producer.exists(id=producer_id):
+            producer = Producer.get(id=producer_id)
             return ProducerOut.from_orm(producer)
         else:
             return 'товара с таким id не существует'
 
 
 @app.post('/api/producer/new', tags=['producers'])
-async def new_producer(n_producer: NewProducer = Body(...), current_user: User = Security(get_current_active_admin,
-                                                                                          scopes=["admin"])):
+async def new_producer(n_producer: NewProducer = Body(...)):  # любой
     with db_session:
         producer = n_producer.dict()
-
+        if producer['id'] > 1999999999 or producer['id'] < 0:
+            return 'ошибка id'
         if Producer.exists(id=int(n_producer.id)):
             return 'производитель с таким id уже существует'
 
@@ -269,33 +289,39 @@ async def new_producer(n_producer: NewProducer = Body(...), current_user: User =
         return ProducerOut.from_orm(producer)
 
 
-@app.put('/api/producer/edit/{item_id}', tags=['producers'])
-async def edit_producer(item_id: int, edit_pr: EditProducer = Body(...),
+@app.put('/api/producer/edit/{producer_id}', tags=['producers'])
+async def edit_producer(producer_id: int, edit_pr: EditProducer = Body(...),
                         current_user: User = Security(get_current_active_admin, scopes=["admin"])):
     with db_session:
-        if Producer.exists(id=item_id):
+        if producer_id > 1999999999 or producer_id < 0:
+            return 'ошибка id'
+        if Producer.exists(id=producer_id):
             producer = edit_pr.dict(exclude_unset=True, exclude_none=True)
-            Producer[item_id].set(**producer)
+            Producer[producer_id].set(**producer)
             commit()
-            return ProducerOut.from_orm(Producer[item_id])
+            return ProducerOut.from_orm(Producer[producer_id])
         return 'производителя с таким id не существует'
 
 
-@app.delete('/api/producer/delete/{item_id}', tags=['producers'])
-async def delete_producer(item_id: int, current_user: User = Security(get_current_active_admin, scopes=["admin"])):
+@app.delete('/api/producer/delete/{producer_id}', tags=['producers'])
+async def delete_producer(producer_id: int, current_user: User = Security(get_current_active_admin, scopes=["admin"])):
     with db_session:
-        if Producer.exists(id=item_id):
-            Producer[item_id].delete()
+        if producer_id > 1999999999 or producer_id < 0:
+            return 'ошибка id'
+        if Producer.exists(id=producer_id):
+            Producer[producer_id].delete()
             commit()
             return "Объект удалён"
         return "производителя с таким id не существует"
 
 
-@app.get('/api/producer/{item_id}/products', tags=['producers'])
-async def sorted_products(item_id: int, current_user: User = Security(get_current_active_user, scopes=["user"])):
+@app.get('/api/producer/{producer_id}/products', tags=['producers'])
+async def sorted_products(producer_id: int):  # любой
     with db_session:
-        if Producer.exists(id=item_id):
-            producer = Producer.get(id=item_id)
+        if producer_id > 1999999999 or producer_id < 0:
+            return 'ошибка id'
+        if Producer.exists(id=producer_id):
+            producer = Producer.get(id=producer_id)
             pr = producer.products.select().order_by(Products.price)[::]
             return ProducerOut(**(producer.to_dict() | {'products': pr}))
         return 'Производителя с таким id не существует'

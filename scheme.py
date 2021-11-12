@@ -80,6 +80,7 @@ class CoolLvL(BaseModel):
     id: int
     name: str
     country: str
+    quantity: int
 
     class Config:
         orm_mode = True
@@ -122,7 +123,6 @@ class UserEnter(BaseModel):
 class AdminEnter(BaseModel):
     name: str
     password: str
-    admin_rights: bool = True
 
 
 class UserOut(BaseModel):
