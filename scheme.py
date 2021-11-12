@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, Field
 
 
 #  Чтобы в полной мере использовать FastAPI,
@@ -17,7 +17,7 @@ class ProductsOut(BaseModel):
     name: str
     price: float
     quantity: int
-    description: Optional[str]
+    description: Optional[str] = Field(None, title="The description of the products", max_length=20000)
     producer: ProducerOutForProducts
 
     @validator('producer', pre=True, allow_reuse=True)

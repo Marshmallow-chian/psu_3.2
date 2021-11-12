@@ -67,6 +67,8 @@ async def new_admin(admin: AdminEnter = Body(...), current_user: User = Security
         password = n_admin['hashed_password']
         n_admin['hashed_password'] = get_password_hash(password)
 
+        n_admin['admin_rights'] = True
+
         User(**n_admin)
         commit()
         return UserOut.from_orm(admin)
