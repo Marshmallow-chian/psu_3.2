@@ -206,8 +206,8 @@ async def new_product(n_product: NewProducts = Body(...), current_user: User = S
 
 
 @app.put('/api/product/edit/{product_id}', tags=['products'])
-async def edit_product(product_id: int, edit_pr: EditProducts = Body(...)):
-                      # current_user: User = Security(get_current_active_admin, scopes=["admin"])):
+async def edit_product(product_id: int, edit_pr: EditProducts = Body(...),
+                       current_user: User = Security(get_current_active_admin, scopes=["admin"])):
     with db_session:
 
         if product_id > 1999999999 or product_id < 0:
@@ -275,7 +275,8 @@ async def get_producer(producer_id: int):  # любой
 
 
 @app.post('/api/producer/new', tags=['producers'])
-async def new_producer(n_producer: NewProducer = Body(...)):  # любой
+async def new_producer(n_producer: NewProducer = Body(...),
+                       current_user: User = Security(get_current_active_admin, scopes=["admin"])):  # любой
     with db_session:
         producer = n_producer.dict()
         if producer['id'] > 1999999999 or producer['id'] < 0:
