@@ -42,8 +42,6 @@ def get_user(user_name: str) -> Union[UserInDB, str]:  # ------------
 
 def authenticate_user(user_name: str, password: str, scope: list) -> Union[UserInDB, Literal[False]]:  # --------------
     user = get_user(user_name)
-    print(user)
-    print(scope)
     if isinstance(user, str):
         return False
     if not user:
@@ -51,10 +49,6 @@ def authenticate_user(user_name: str, password: str, scope: list) -> Union[UserI
     if not verify_password(password, user.hashed_password):
         return False
     if len(scope) > 1:
-        return False
-    if user.admin_rights is True and scope[0] == 'user':
-        return False
-    if user.admin_rights is False and scope[0] == 'admin':
         return False
     return user
 
@@ -97,7 +91,7 @@ async def get_current_user(security_scopes: SecurityScopes, token: str = Depends
     for scope in security_scopes.scopes:
         if scope not in token_data.scopes:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                                detail="Недостаточно прав",
+                                detail="Not enough permissions",
                                 headers={"WWW-Authenticate": authenticate_value})
     return user
 

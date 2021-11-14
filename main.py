@@ -9,7 +9,7 @@ from scheme import (ProductsOut, ProducerOut, NewProducts, EditProducts, NewProd
 from security.s_scheme import Token
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi import FastAPI, Body, Security, Depends, status, HTTPException
+from fastapi import FastAPI, Body, Security, Depends, status, HTTPException, Query, Path
 import os
 from config import secret_key, administrator
 
@@ -36,10 +36,17 @@ async def start_app():
     db.bind(provider='sqlite', filename=my_db, create_db=create_db)
     db.generate_mapping(create_tables=create_db)
     ADMINISTRATOR = administrator()
-    with db_session:
-        if not User.exists(name=ADMINISTRATOR['name']):
-            User(**ADMINISTRATOR)
+    if create_db is True:
+        with db_session:
+            Producer(id=1, name='Red', country='Russia')
+            Producer(id=2, name='Green', country='Russia')
+            Products(id=1, name='red', price=100, quantity=100, description='description', producer=1)
+            Products(id=2, name='green', price=100, quantity=100, description='description', producer=2)
+            Products(id=3, name='light green', price=100, quantity=100, description='description', producer=1)
+            if not User.exists(name=ADMINISTRATOR['name']):
+                User(**ADMINISTRATOR)
             commit()
+
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -81,8 +88,6 @@ async def new_admin(admin: AdminEnter = Body(...), current_user: User = Security
 async def new_user(user: UserEnter = Body(...)):  # любой
     with db_session:
         n_user = user.dict()
-        print(User.exists(name=user.name))
-        print(user)
         if User.exists(name=user.name):
             return 'пользователь с таким именем уже существует'
 
@@ -128,6 +133,18 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
                 detail="Incorrect username or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        if user.admin_rights is True and form_data.scopes[0] == 'user':
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not enough permissions",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        if user.admin_rights is False and form_data.scopes[0] == 'admin':
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not enough permissions",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)  # 30 min
         access_token = create_access_token(data={"sub": user.name, "scopes": form_data.scopes},
                                            expires_delta=access_token_expires)
@@ -148,7 +165,8 @@ async def get_all_products():  # любой
 
 
 @app.get('/api/product/get_average_products', tags=['products'])
-async def get_average(minimum: int, maximum: int):  # любой
+async def get_average(minimum: int = Query(0, ge=0, le=10000),
+                      maximum: int = Query(10000, ge=0, le=10000)):  # любой
     with db_session:
         products = Products.select(lambda p: (minimum <= p.price) and (p.price <= maximum))[::]  # работает
         all_products = []
@@ -158,10 +176,8 @@ async def get_average(minimum: int, maximum: int):  # любой
 
 
 @app.get('/api/product/{product_id}', tags=['products'])
-async def get_product(product_id: int):  # любой
+async def get_product(product_id: int = Path(1, ge=1, le=10000)):  # любой
     with db_session:
-        if product_id > 1999999999 or product_id < 0:
-            return 'ошибка id'
         if Products.exists(id=product_id):
             product = Products.get(id=product_id)
             return ProductsOut.from_orm(product)
@@ -170,18 +186,15 @@ async def get_product(product_id: int):  # любой
 
 
 @app.put('/api/product/buy/{product_id}', tags=['products.buy'])
-async def product_buy(product_id: int, count: int, current_user: User = Security(get_current_active_user, scopes=["user"])):
+async def product_buy(product_id: int = Path(1, ge=1, le=10000), count: int = Query(10, ge=1, le=10000),
+                      current_user: User = Security(get_current_active_user, scopes=["user"])):
     with db_session:
-        if product_id > 1999999999 or product_id < 0:
-            return 'ошибка id'
         if Products.exists(id=product_id):
             product = Products.get(id=product_id)
-            if count <= 0:
-                return 'error: попытка купить отрицательное число товаров'
-            product.quantity = product.quantity - count
-            if product.quantity < 0:
+            quantity = product.quantity - count
+            if quantity < 0:
                 return 'такого количесвта товаров нет на складе'
-            print(product.quantity)
+            product.quantity = quantity
             commit()
             return ProductsOut.from_orm(Products[product_id])
         return 'товара с таким id не существует'
@@ -192,8 +205,6 @@ async def new_product(n_product: NewProducts = Body(...), current_user: User = S
                                                                                         scopes=["admin"])):
     with db_session:
 
-        if n_product.id > 1999999999 or n_product.id < 0:
-            return 'ошибка id'
         product = n_product.dict()
 
         if Products.exists(id=int(n_product.id)):
@@ -208,12 +219,9 @@ async def new_product(n_product: NewProducts = Body(...), current_user: User = S
 
 
 @app.put('/api/product/edit/{product_id}', tags=['products'])
-async def edit_product(product_id: int, edit_pr: EditProducts = Body(...),
+async def edit_product(product_id: int = Path(1, ge=1, le=10000), edit_pr: EditProducts = Body(...),
                        current_user: User = Security(get_current_active_admin, scopes=["admin"])):
     with db_session:
-
-        if product_id > 1999999999 or product_id < 0:
-            return 'ошибка id'
 
         if Products.exists(id=product_id):
             product = edit_pr.dict(exclude_unset=True, exclude_none=True)
@@ -226,10 +234,9 @@ async def edit_product(product_id: int, edit_pr: EditProducts = Body(...),
 
 
 @app.delete('/api/product/delete/{product_id}', tags=['products'])
-async def delete_product(product_id: int, current_user: User = Security(get_current_active_admin, scopes=["admin"])):
+async def delete_product(product_id: int = Path(1, ge=1, le=10000),
+                         current_user: User = Security(get_current_active_admin, scopes=["admin"])):
     with db_session:
-        if product_id > 1999999999 or product_id < 0:
-            return 'ошибка id'
         if Products.exists(id=product_id):
             Products[product_id].delete()
             commit()
@@ -241,15 +248,13 @@ async def delete_product(product_id: int, current_user: User = Security(get_curr
 
 
 @app.get('/api/producer/get_cool_producers', tags=['producers'])
-async def get_cool(cool_level: int):
+async def get_cool(cool_level: int = Query(10, ge=0, le=10000)):
     with db_session:
         producer = Producer.select(lambda p: len(p.products) >= cool_level)[::]  # работает
         all_producer = []
         for i in producer:
             quantity = len(i.products)
             i = i.to_dict() | {'quantity': quantity}
-            print(i)
-            print(CoolLvL(**i))
             all_producer.append(CoolLvL(**i))
         return all_producer
 
@@ -265,10 +270,8 @@ async def get_all_producers():
 
 
 @app.get('/api/producer/{producer_id}', tags=['producers'])
-async def get_producer(producer_id: int):  # любой
+async def get_producer(producer_id: int = Path(1, ge=1, le=10000)):  # любой
     with db_session:
-        if producer_id > 1999999999 or producer_id < 0:
-            return 'ошибка id'
         if Producer.exists(id=producer_id):
             producer = Producer.get(id=producer_id)
             return ProducerOut.from_orm(producer)
@@ -281,8 +284,6 @@ async def new_producer(n_producer: NewProducer = Body(...),
                        current_user: User = Security(get_current_active_admin, scopes=["admin"])):  # любой
     with db_session:
         producer = n_producer.dict()
-        if producer['id'] > 1999999999 or producer['id'] < 0:
-            return 'ошибка id'
         if Producer.exists(id=int(n_producer.id)):
             return 'производитель с таким id уже существует'
 
@@ -292,11 +293,9 @@ async def new_producer(n_producer: NewProducer = Body(...),
 
 
 @app.put('/api/producer/edit/{producer_id}', tags=['producers'])
-async def edit_producer(producer_id: int, edit_pr: EditProducer = Body(...),
+async def edit_producer(producer_id: int = Path(1, ge=1, le=10000), edit_pr: EditProducer = Body(...),
                         current_user: User = Security(get_current_active_admin, scopes=["admin"])):
     with db_session:
-        if producer_id > 1999999999 or producer_id < 0:
-            return 'ошибка id'
         if Producer.exists(id=producer_id):
             producer = edit_pr.dict(exclude_unset=True, exclude_none=True)
             Producer[producer_id].set(**producer)
@@ -306,10 +305,9 @@ async def edit_producer(producer_id: int, edit_pr: EditProducer = Body(...),
 
 
 @app.delete('/api/producer/delete/{producer_id}', tags=['producers'])
-async def delete_producer(producer_id: int, current_user: User = Security(get_current_active_admin, scopes=["admin"])):
+async def delete_producer(producer_id: int = Path(1, ge=1, le=10000),
+                          current_user: User = Security(get_current_active_admin, scopes=["admin"])):
     with db_session:
-        if producer_id > 1999999999 or producer_id < 0:
-            return 'ошибка id'
         if Producer.exists(id=producer_id):
             Producer[producer_id].delete()
             commit()
@@ -318,10 +316,8 @@ async def delete_producer(producer_id: int, current_user: User = Security(get_cu
 
 
 @app.get('/api/producer/{producer_id}/products', tags=['producers'])
-async def sorted_products(producer_id: int):  # любой
+async def sorted_products(producer_id: int = Path(1, ge=1, le=10000)):  # любой
     with db_session:
-        if producer_id > 1999999999 or producer_id < 0:
-            return 'ошибка id'
         if Producer.exists(id=producer_id):
             producer = Producer.get(id=producer_id)
             pr = producer.products.select().order_by(Products.price)[::]

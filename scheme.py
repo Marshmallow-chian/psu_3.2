@@ -1,5 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel, validator, Field
+from typing_extensions import Annotated
 
 
 #  Чтобы в полной мере использовать FastAPI,
@@ -17,7 +18,7 @@ class ProductsOut(BaseModel):
     name: str
     price: float
     quantity: int
-    description: Optional[str] = Field(None, title="The description of the products", max_length=20000)
+    description: Optional[str]
     producer: ProducerOutForProducts
 
     @validator('producer', pre=True, allow_reuse=True)
@@ -35,7 +36,7 @@ class ProductOutForProducer(BaseModel):
     name: str
     price: float
     quantity: int
-    description: Optional[str]
+    description: Optional[str] = Field(None, title="The description of the products", max_length=20000)
 
     class Config:
         orm_mode = True
@@ -60,44 +61,44 @@ class ProducerOut(BaseModel):
 
 
 class NewProducts(BaseModel):
-    id: int
-    name: str
-    price: float
-    quantity: int
-    description: str
-    producer: int
+    id: Annotated[int, Field(title="1", ge=1, le=10000)] = 1
+    name: Annotated[str, Field(title="The description of the products", max_length=20000)] = 'name'
+    price: Annotated[int, Field(title="1", ge=0, le=10000)] = 100
+    quantity: Annotated[int, Field(title="1", ge=0, le=10000)] = 100
+    description: Annotated[Optional[str], Field(max_length=20000)] = 'description'
+    producer: Annotated[int, Field(title="1", ge=1, le=10000)] = 1
 
 
 class EditProducts(BaseModel):
-    name: Optional[str]
-    price: Optional[float]
-    quantity: Optional[int]
-    description: Optional[str]
-    producer: Optional[int]
+    name: Annotated[str, Field(title="The description of the products", max_length=20000)] = 'name'
+    price: Annotated[int, Field(title="1", ge=0, le=10000)] = 100
+    quantity: Annotated[int, Field(title="1", ge=0, le=10000)] = 100
+    description: Annotated[Optional[str], Field(max_length=20000)] = 'description'
+    producer: Annotated[int, Field(title="1", ge=1, le=10000)] = 1
 
 
 class CoolLvL(BaseModel):
-    id: int
-    name: str
-    country: str
-    quantity: int
+    id: Annotated[int, Field(title="1", ge=1, le=10000)] = 1
+    name: Annotated[str, Field(max_length=20)] = 'name'
+    country: Annotated[str, Field(max_length=20)] = 'Russia'
+    quantity: Annotated[int, Field(title="1", ge=0, le=10000)] = 100
 
     class Config:
         orm_mode = True
 
 
 class NewProducer(BaseModel):
-    id: int
-    name: str
-    country: str
+    id: Annotated[int, Field(title="1", ge=1, le=10000)] = 1
+    name: Annotated[str, Field(max_length=20)] = 'name'
+    country: Annotated[str, Field(max_length=20)] = 'Russia'
 
     class Config:
         orm_mode = True
 
 
 class EditProducer(BaseModel):
-    name: Optional[str]
-    country: Optional[str]
+    name: Annotated[str, Field(max_length=20)] = 'name'
+    country: Annotated[str, Field(max_length=20)] = 'Russia'
 
 
 class SortedProductsForProducer(BaseModel):
@@ -116,17 +117,17 @@ class SortedProductsForProducer(BaseModel):
 
 
 class UserEnter(BaseModel):
-    name: str
-    password: str
+    name: Annotated[str, Field(max_length=20)] = 'name'
+    password: Annotated[str, Field(max_length=20)] = 'qwerty123'
 
 
 class AdminEnter(BaseModel):
-    name: str
-    password: str
+    name: Annotated[str, Field(max_length=20)] = 'name'
+    password: Annotated[str, Field(max_length=20)] = 'qwerty123'
 
 
 class UserOut(BaseModel):
-    name: str
+    name: Annotated[str, Field(max_length=20)] = 'name'
     admin_rights: bool = False
     disabled: Optional[bool] = None
 
