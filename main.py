@@ -83,7 +83,6 @@ async def new_admin(admin: AdminEnter = Body(...), current_user: User = Security
 
 # ----------------------------------------------------------------------------------------------------
 
-
 @app.post('/api/user/new', tags=['user'])
 async def new_user(user: UserEnter = Body(...)):  # любой
     with db_session:
@@ -140,6 +139,12 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
                 headers={"WWW-Authenticate": "Bearer"},
             )
         if user.admin_rights is False and form_data.scopes[0] == 'admin':
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not enough permissions",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        if len(form_data.scopes) > 1:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Not enough permissions",

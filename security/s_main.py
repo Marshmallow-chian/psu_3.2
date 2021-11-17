@@ -48,8 +48,7 @@ def authenticate_user(user_name: str, password: str, scope: list) -> Union[UserI
         return False
     if not verify_password(password, user.hashed_password):
         return False
-    if len(scope) > 1:
-        return False
+
     return user
 
 

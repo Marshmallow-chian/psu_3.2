@@ -7,6 +7,7 @@ from typing_extensions import Annotated
 #  модели Пони должны работать со схемами pydantic
 
 
+
 class ProducerOutForProducts(BaseModel):
     id: int
     name: str
@@ -61,27 +62,27 @@ class ProducerOut(BaseModel):
 
 
 class NewProducts(BaseModel):
-    id: Annotated[int, Field(title="1", ge=1, le=10000)] = 1
-    name: Annotated[str, Field(title="The description of the products", max_length=20000)] = 'name'
-    price: Annotated[int, Field(title="1", ge=0, le=10000)] = 100
-    quantity: Annotated[int, Field(title="1", ge=0, le=10000)] = 100
+    id: Annotated[int, Field(ge=1, le=10000)] = 1
+    name: Annotated[str, Field(max_length=20000)] = 'name'
+    price: Annotated[int, Field(ge=0, le=10000)] = 100
+    quantity: Annotated[int, Field(ge=0, le=10000)] = 100
     description: Annotated[Optional[str], Field(max_length=20000)] = 'description'
-    producer: Annotated[int, Field(title="1", ge=1, le=10000)] = 1
+    producer: Annotated[int, Field(ge=1, le=10000)] = 1
 
 
 class EditProducts(BaseModel):
-    name: Annotated[str, Field(title="The description of the products", max_length=20000)] = 'name'
-    price: Annotated[int, Field(title="1", ge=0, le=10000)] = 100
-    quantity: Annotated[int, Field(title="1", ge=0, le=10000)] = 100
+    name: Annotated[str, Field(max_length=20000)] = 'name'
+    price: Annotated[int, Field(ge=0, le=10000)] = 100
+    quantity: Annotated[int, Field(ge=0, le=10000)] = 100
     description: Annotated[Optional[str], Field(max_length=20000)] = 'description'
-    producer: Annotated[int, Field(title="1", ge=1, le=10000)] = 1
+    producer: Annotated[int, Field(ge=1, le=10000)] = 1
 
 
 class CoolLvL(BaseModel):
-    id: Annotated[int, Field(title="1", ge=1, le=10000)] = 1
+    id: Annotated[int, Field(ge=1, le=10000)] = 1
     name: Annotated[str, Field(max_length=20)] = 'name'
     country: Annotated[str, Field(max_length=20)] = 'Russia'
-    quantity: Annotated[int, Field(title="1", ge=0, le=10000)] = 100
+    quantity: Annotated[int, Field(ge=0, le=10000)] = 100
 
     class Config:
         orm_mode = True
